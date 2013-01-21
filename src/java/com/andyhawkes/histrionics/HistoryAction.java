@@ -1,7 +1,8 @@
 package com.andyhawkes.histrionics;
 
 /**
- * An action that is capable of undoing and redoing itself.
+ * An action (similar to Runnable) that is capable of undoing and redoing
+ * itself.
  */
 public interface HistoryAction {
 	public void run();

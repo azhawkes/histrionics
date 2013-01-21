@@ -2,6 +2,7 @@ package com.andyhawkes.histrionics;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.apache.log4j.ConsoleAppender;
@@ -12,18 +13,26 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class SwappingActionTest {
+	private static final Logger log = Logger.getLogger(SwappingActionTest.class);
+
+	private File swapDir;
 	private StringBuffer buf = new StringBuffer("...");
 
 	@Before
-	public void configureLog4j() {
+	public void configure() {
 		Logger.getLogger("com.andyhawkes.histrionics").addAppender(new ConsoleAppender(new TTCCLayout()));
 		Logger.getLogger("com.andyhawkes.histrionics").setLevel(Level.DEBUG);
+
+		swapDir = new File(System.getProperty("java.io.tmpdir") + File.separator + "SwappingActionTest-" + System.currentTimeMillis());
+		swapDir.mkdirs();
+
+		log.info("created swap dir at " + swapDir.getAbsolutePath());
 	}
 
 	@Test
 	public void testSwappingAndUnswapping() throws Exception {
 		AppendAction action = new AppendAction();
-		SwappingAction swapper = new SwappingAction(action);
+		SwappingAction swapper = new SwappingAction(action, swapDir);
 
 		action.run();
 
@@ -35,8 +44,12 @@ public class SwappingActionTest {
 		assertTrue(buf.toString().equals("...."));
 
 		swapper.swap();
+
+		assertTrue("File should be swapped", swapDir.listFiles().length == 1);
+
 		swapper.undo();
 
+		assertTrue("File should be unswapped", swapDir.listFiles().length == 0);
 		assertTrue(buf.toString().equals("..."));
 
 		swapper.redo();

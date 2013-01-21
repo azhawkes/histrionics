@@ -9,19 +9,29 @@ import java.io.ObjectOutputStream;
 
 import org.apache.log4j.Logger;
 
+/**
+ * Action that wraps a MementoAction and takes care of swapping the byte arrays
+ * (containing the before and after state) to a temp file when prompted. This is
+ * used by the SwappingHistoryChain to save working memory when there get to be
+ * too many actions.
+ */
 public class SwappingAction implements HistoryAction {
 	private static final Logger log = Logger.getLogger(SwappingAction.class);
 
 	private MementoAction action;
+	private File swapDir;
 	private File swap;
 
-	public SwappingAction(MementoAction action) {
+	public SwappingAction(MementoAction action, File swapDir) {
 		this.action = action;
+		this.swapDir = swapDir;
 	}
 
 	public void swap() throws IOException {
 		try {
-			swap = File.createTempFile("history-", ".tmp");
+			swap = File.createTempFile("history-", ".tmp", swapDir);
+
+			log.debug("created swap file at " + swap.getAbsolutePath());
 
 			ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream(swap));
 

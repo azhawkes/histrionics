@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -25,71 +26,65 @@ import org.junit.Test;
  * Tests the history chain and swapping history chain.
  */
 public class HistoryChainTest {
+	private static final Logger log = Logger.getLogger(HistoryChainTest.class);
+
+	static {
+		Logger.getLogger("com.andyhawkes.histrionics").addAppender(new ConsoleAppender(new TTCCLayout()));
+		Logger.getLogger("com.andyhawkes.histrionics").setLevel(Level.DEBUG);
+	}
+
+	private File swapDir;
 	private Random random = new Random();
 	private int[] testData = new int[] { 1, 4, 9, 3, 7, 2, 1, 5, 8, 6 };
 	private int[] workingData = Arrays.copyOf(testData, testData.length);
 
 	@Before
-	public void configureLog4j() {
-		Logger.getLogger("com.andyhawkes.histrionics").addAppender(new ConsoleAppender(new TTCCLayout()));
-		Logger.getLogger("com.andyhawkes.histrionics").setLevel(Level.DEBUG);
+	public void configure() {
+		swapDir = new File(System.getProperty("java.io.tmpdir") + File.separator + "SwappingActionTest-" + random.nextLong());
+		swapDir.mkdirs();
+
+		log.info("created swap dir at " + swapDir.getAbsolutePath());
 	}
 
 	@Test
 	public void testSimpleHistoryChain() {
-		HistoryChain chain = new SimpleHistoryChain();
-
-		for (int i = 0; i < 50; i++) {
-			chain.run(createRandomAction());
-		}
-
-		assertTrue(chain.canUndo());
-		assertFalse(chain.canRedo());
-
-		for (int i = 0; i < 20; i++) {
-			chain.undo();
-		}
-
-		assertTrue(chain.canUndo());
-		assertTrue(chain.canRedo());
-
-		for (int i = 0; i < 10; i++) {
-			chain.redo();
-		}
-
-		assertTrue(chain.canUndo());
-		assertTrue(chain.canRedo());
-
-		for (int i = 0; i < 5; i++) {
-			chain.undo();
-		}
-
-		assertTrue(chain.canUndo());
-		assertTrue(chain.canRedo());
-
-		for (int i = 0; i < 10; i++) {
-			chain.run(createRandomAction());
-		}
-
-		assertTrue(chain.canUndo());
-		assertFalse(chain.canRedo());
-
-		for (int i = 0; i < 45; i++) {
-			chain.undo();
-		}
-
-		assertFalse(chain.canUndo());
-		assertTrue(chain.canRedo());
-
-		for (int i = 0; i < testData.length; i++) {
-			assertEquals("Test data must be the same as we started with", testData[i], workingData[i]);
-		}
+		testHistoryChain(new SimpleHistoryChain());
 	}
 
 	@Test
 	public void testSwappingHistoryChain() {
-		HistoryChain chain = new SwappingHistoryChain(7);
+		testHistoryChain(new SwappingHistoryChain(swapDir, 10));
+	}
 
+	@Test
+	public void testSwappingHistoryChainFileCleanup() {
+		HistoryChain chain = new SwappingHistoryChain(swapDir, 10);
+
+		assertTrue("There should be no swap files", swapDir.listFiles().length == 0);
+
+		for (int i = 0; i < 20; i++) {
+			chain.run(new ShuffleAction());
+		}
+
+		assertTrue("There should be 10 swap files", swapDir.listFiles().length == 10);
+
+		for (int i = 0; i < 15; i++) {
+			chain.undo();
+		}
+
+		assertTrue("There should only be 5 swap files", swapDir.listFiles().length == 5);
+
+		chain.run(new ShuffleAction());
+
+		assertFalse("Can't redo", chain.canRedo());
+		assertTrue("There should still be 5 swap files", swapDir.listFiles().length == 5);
+
+		chain.clear();
+
+		assertTrue("There should be no swap files", swapDir.listFiles().length == 0);
+	}
+
+	private void testHistoryChain(HistoryChain chain) {
 		for (int i = 0; i < 50; i++) {
 			chain.run(createRandomAction());
 		}
@@ -135,6 +130,8 @@ public class HistoryChainTest {
 		for (int i = 0; i < testData.length; i++) {
 			assertEquals("Test data must be the same as we started with", testData[i], workingData[i]);
 		}
+
+		chain.clear();
 	}
 
 	private HistoryAction createRandomAction() {
@@ -166,6 +163,10 @@ public class HistoryChainTest {
 		}
 	}
 
+	/**
+	 * Memento action that shuffles the entire array, preserving mementos of the
+	 * entire array before and after sorting.
+	 */
 	private class ShuffleAction extends MementoAction implements Serializable {
 		private static final long serialVersionUID = 1L;
 
