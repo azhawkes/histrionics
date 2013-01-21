@@ -1,8 +1,8 @@
-# Histrionics - Simple undo/redo history chains for Java apps
+# Histrionics: Simple undo/redo history chains for Java apps
 
 Implementing undo and redo operations in a client-side Java app can be 
 a little trickier than you might expect. It can be especially tricky when 
-building a graphical editor like the one in [Loadster](http://www.loadsterperformance.com).
+building a graphical editor like the one I built for [Loadster](http://www.loadsterperformance.com).
 
 This project provides a simple framework for implementing your own 
 undoable actions (`HistoryAction`, `MementoAction`) and chaining them together
@@ -132,7 +132,10 @@ those menu options and shortcuts.
 
 ## Memory management
 
-TODO
+If you find you're using a lot of `MementoAction` and your serialized domain model is kind of big, take a 
+look at `SwappingHistoryChain`. It can automatically store the serialized mementos in files when the stack of
+undoable actions gets too big. Make sure to call `clear()` on the history chain when you're done with it so the
+files are properly deleted.
 
 ## License
 Copyright (c) 2013 Andy Hawkes
