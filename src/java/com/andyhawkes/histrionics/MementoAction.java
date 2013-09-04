@@ -18,9 +18,19 @@ public abstract class MementoAction implements HistoryAction {
 	byte[] before;
 	byte[] after;
 
+    public void init() {
+        try {
+            before = captureState();
+        } catch (Exception e) {
+			log.warn("failed to initialize memento action", e);
+        }
+    }
+
 	public void run() {
 		try {
-			before = captureState();
+            if (before == null) {
+			    before = captureState();
+            }
 
 			runInternal();
 
